@@ -1,0 +1,7 @@
+.vs/
+[Bb]in/
+[Oo]bj/
+
+*.dbmdl
+*.jfm
+*.sqlproj.user
