@@ -11,6 +11,8 @@ You need to have :
 # Quick Installation
 - Execute the file: "AssemblyHttp.sql"
 
+This will create the assembly and the function "HttpRequest" associated.
+
 # Full Installation
 - Open the solution with Visual Studio
 - Build the assembly
