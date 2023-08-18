@@ -39,7 +39,7 @@ We remove all XML usage and choose JSON instead. Also, we used inline function i
 
 # Example:
 ```
-SELECT b.*
+SELECT TOP 5 b.*
 FROM HttpRequest('GET', 'https://restcountries.com/v3.1/all', NULL, NULL) a
 CROSS APPLY OPENJSON(Response, '$')
 WITH (
@@ -49,6 +49,14 @@ WITH (
 	, population int
 	) b
 ```
+# Results:
+|**name**|**cca2**|**region**|**population**|
+|---    |:-:    |:-:    |:-:    |
+|South Africa|ZA|Africa|59308690|
+|Svalbard and Jan Mayen|SJ|Europe|2562|
+|Samoa|WS|Oceania|198410|
+|Gambia|GM|Africa|2416664|
+|Saint Kitts and Nevis|KN|Americas|53192|
 
 # Credit
 - Jérémie Clerc
