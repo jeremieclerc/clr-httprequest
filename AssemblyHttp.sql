@@ -20,5 +20,5 @@ EXEC sp_add_trusted_assembly @hash, N'AssemblyHttp'
 -- Create the assembly and the function associated
 CREATE ASSEMBLY AssemblyHttp AUTHORIZATION [dbo] FROM @clrBinary WITH PERMISSION_SET = UNSAFE;
 
-EXEC ('CREATE FUNCTION dbo.HttpRequest(@requestType AS VARCHAR(8), @url AS NVARCHAR(MAX), @headers AS NVARCHAR(MAX), @body AS NVARCHAR(MAX)) 
+EXEC ('CREATE FUNCTION dbo.HttpRequest(@requestType AS NVARCHAR(8), @url AS NVARCHAR(MAX), @headers AS NVARCHAR(MAX), @body AS NVARCHAR(MAX)) 
     RETURNS TABLE (StatusCode INT, Response NVARCHAR(MAX), Headers NVARCHAR(MAX)) AS EXTERNAL NAME [AssemblyHttp].UserDefinedFunctions.HttpRequest')
