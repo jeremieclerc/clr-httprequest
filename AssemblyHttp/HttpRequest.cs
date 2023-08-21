@@ -163,6 +163,7 @@ public partial class UserDefinedFunctions
                     }
                     var reqStream = request.GetRequestStream();
                     reqStream.Write(byteArray, 0, byteArray.Length);
+                    reqStream.Close();
                 }
 
                 HttpWebResponse webResponse = (HttpWebResponse)request.GetResponse();
