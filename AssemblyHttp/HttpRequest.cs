@@ -26,7 +26,7 @@ public partial class UserDefinedFunctions
     public static IEnumerable HttpRequest(SqlString requestType, SqlString url, SqlString headers, SqlString body)
     {
         
-        string iMethod = requestType.ToString().ToUpper();
+        string iMethod = requestType.ToString().ToUpper().Trim();
         string iUrl = url.ToString();
         string iHeaders = headers.ToString();
         string iBody = body.ToString();
