@@ -76,6 +76,7 @@ public partial class UserDefinedFunctions
                         iKey = iKey.Substring(1, iKey.Length - 2).Trim();
                     }
                     string iValue = i.Trim().Substring(i.IndexOf(":") + 1).Trim();
+                    iValue = Regex.Replace(iValue, @" *, *""$", "");
                     if (iValue.Length > 1 && iValue[0] == '"')
                     {
                         iValue = iValue.Substring(1, iValue.Length - 2).Trim().Replace("\\\"", "\"");
