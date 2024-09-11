@@ -6,6 +6,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.ComponentModel.Design;
 
 public partial class UserDefinedFunctions
 {
@@ -25,7 +26,6 @@ public partial class UserDefinedFunctions
     [SqlFunction(FillRowMethodName = "FillRowHttpRequest", TableDefinition = "StatusCode INT, Response NVARCHAR(MAX), Headers NVARCHAR(MAX)", DataAccess = DataAccessKind.Read, IsDeterministic = false)]
     public static IEnumerable HttpRequest(SqlString requestType, SqlString url, SqlString headers, SqlString body)
     {
-        
         string iMethod = requestType.ToString().ToUpper().Trim();
         string iUrl = url.ToString();
         string iHeaders = headers.ToString();
@@ -46,11 +46,15 @@ public partial class UserDefinedFunctions
         {
             if (iMethod != "GET" && iMethod != "POST" && iMethod != "PUT" && iMethod != "HEAD" && iMethod != "DELETE" && iMethod != "TRACE" && iMethod != "OPTIONS")
             {
-                rBody = "Method not supported. Methods used : " + iMethod;
+                rBody = "Method not supported. Methods used : " + iMethod + ". List of supported methods : GET, POST, PUT, HEAD, DELETE, TRACE, OPTIONS.";
             }
-            else if (iUrl.Length <= 3 || iUrl.Length > 2000 || iUrl == "Null")
+            else if (iUrl == "Null")
             {
-                rBody = "URL not supported. URL Length : " + iUrl.Length + ". URL Value: " + iUrl;
+                rBody = "Please specify an URL to request";
+            }
+            else if (iUrl.Length <= 3 || iUrl.Length > 2000)
+            {
+                rBody = "URL not supported. URL length must be between 3 and 2000. Current length : " + iUrl.Length + ". URL Value: " + iUrl;
             }
             else
             {
@@ -83,31 +87,31 @@ public partial class UserDefinedFunctions
                     }
 
 
-                    if (String.Equals(iKey, "Accept", StringComparison.OrdinalIgnoreCase))
+                    if (iKey.ToUpper() == "ACCEPT")
                     {
                         request.Accept = iValue;
                     }
-                    else if (String.Equals(iKey, "Connection", StringComparison.OrdinalIgnoreCase) && String.Equals(iValue, "Close", StringComparison.OrdinalIgnoreCase))
+                    else if (iKey.ToUpper() == "CONNECTION" && iValue.ToUpper() == "CLOSE")
                     {
                         request.KeepAlive = false;
                     }
-                    else if (String.Equals(iKey, "Date", StringComparison.OrdinalIgnoreCase))
+                    else if (iKey.ToUpper() == "DATE")
                     {
                         request.Date = DateTime.Parse(iValue);
                     }
-                    else if (String.Equals(iKey, "If-Modified-Since", StringComparison.OrdinalIgnoreCase))
+                    else if (iKey.ToUpper() == "IF-MODIFIED-SINCE")
                     {
                         request.IfModifiedSince = DateTime.Parse(iValue);
                     }
-                    else if (String.Equals(iKey, "Expect", StringComparison.OrdinalIgnoreCase))
+                    else if (iKey.ToUpper() == "EXPECT")
                     {
                         request.Expect = iValue;
                     }
-                    else if (String.Equals(iKey, "Host", StringComparison.OrdinalIgnoreCase))
+                    else if (iKey.ToUpper() == "HOST")
                     {
                         request.Host = iValue;
                     }
-                    else if (String.Equals(iKey, "Referer", StringComparison.OrdinalIgnoreCase))
+                    else if (iKey.ToUpper() == "REFERER")
                     {
                         request.Referer = iValue;
                     }
@@ -115,32 +119,32 @@ public partial class UserDefinedFunctions
                     {
                         request.TransferEncoding = iValue;
                     }
-                    else if (String.Equals(iKey, "User-Agent", StringComparison.OrdinalIgnoreCase))
+                    else if (iKey.ToUpper() == "USER-AGENT")
                     {
                         request.UserAgent = iValue;
                     }
-                    else if (String.Equals(iKey, "Range", StringComparison.OrdinalIgnoreCase))
+                    else if (iKey.ToUpper() == "RANGE")
                     {
                         request.AddRange(int.Parse(iValue.Substring(0, iValue.IndexOf("-") + 1)), int.Parse(iValue.Substring(iValue.IndexOf("-") + 1)));
                     }
-                    else if (String.Equals(iKey, "Content-Type", StringComparison.OrdinalIgnoreCase))
+                    else if (iKey.ToUpper() == "CONTENT-TYPE")
                     {
                         request.ContentType = iValue;
                         isContentTypeDefined = true;
                     }
-                    else if (String.Equals(iKey, "Content-Length", StringComparison.OrdinalIgnoreCase) && long.TryParse(iValue, out temp))
+                    else if (iKey.ToUpper() == "CONTENT-LENGTH" && long.TryParse(iValue, out temp))
                     {
                         request.ContentLength = long.Parse(iValue);
                         isContentLengthDefined = true;
                     }
-                    else if (String.Equals(iKey, "Timeout", StringComparison.OrdinalIgnoreCase) && long.TryParse(iValue, out temp)) // timeout handle as header
+                    else if (iKey.ToUpper() == "TIMEOUT" && long.TryParse(iValue, out temp)) // timeout handle as header
                     {
                         if (int.Parse(iValue) == -1 || int.Parse(iValue) > 0)
                         {
                             request.Timeout = int.Parse(iValue);
                         }
                     }
-                    else if (String.Equals(iKey, "Verify", StringComparison.OrdinalIgnoreCase) && String.Equals(iValue, "false", StringComparison.OrdinalIgnoreCase))
+                    else if (iKey.ToUpper() == "VERIFY" && iValue.ToUpper() == "FALSE")
                     {
                         request.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
                     }
@@ -151,7 +155,7 @@ public partial class UserDefinedFunctions
                 }
 
 
-                if (iMethod != "GET") // POST, PUT etc
+                if (iMethod != "GET" && iBody.Length > 0 && iBody != "Null") // POST, PUT etc
                 {
                     byte[] byteArray = Encoding.UTF8.GetBytes(iBody);
                     if (isContentTypeDefined == false)
@@ -223,7 +227,7 @@ public partial class UserDefinedFunctions
             rHeaders = null;
         }
 
-        responseCollection.Add(new HttpReponseObject(rCode,rBody, rHeaders));
+        responseCollection.Add(new HttpReponseObject(rCode, rBody, rHeaders));
         return responseCollection;
     }
 
