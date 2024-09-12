@@ -7,6 +7,8 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.ComponentModel.Design;
+using System.Collections.Generic;
+using System.Diagnostics;
 
 public partial class UserDefinedFunctions
 {
@@ -62,95 +64,79 @@ public partial class UserDefinedFunctions
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(iUrl);
                 request.Method = iMethod;
 
+                // Parse the headers
+                var headersDict = ParseHeaders(iHeaders);
 
-                iHeaders = iHeaders.Trim();
-                if (iHeaders.Length > 0 && iHeaders[0] == '{')
+                foreach (var kvp in headersDict)
                 {
-                    iHeaders = iHeaders.Remove(0, 1);
-                    iHeaders = iHeaders.Remove(iHeaders.Length - 1);
-                    iHeaders = Regex.Replace(iHeaders, @"[0-9""],", "$0<StringSplit>");
-                    items = iHeaders.Split(new string[] { ",<StringSplit>" }, StringSplitOptions.None);
-                }
-
-                foreach (string i in items)
-                {
-                    string iKey = i.Trim().Substring(0, i.IndexOf(":")).Trim();
-                    if (iKey.Length > 2)
+                    Debug.WriteLine(kvp.Key + " - " + kvp.Value);
+                    // Handle each header based on its key
+                    switch (kvp.Key.ToUpper())
                     {
-                        iKey = iKey.Substring(1, iKey.Length - 2).Trim();
-                    }
-                    string iValue = i.Trim().Substring(i.IndexOf(":") + 1).Trim();
-                    iValue = Regex.Replace(iValue, @" *, *""$", "");
-                    if (iValue.Length > 1 && iValue[0] == '"')
-                    {
-                        iValue = iValue.Substring(1, iValue.Length - 2).Trim().Replace("\\\"", "\"");
-                    }
-
-
-                    if (iKey.ToUpper() == "ACCEPT")
-                    {
-                        request.Accept = iValue;
-                    }
-                    else if (iKey.ToUpper() == "CONNECTION" && iValue.ToUpper() == "CLOSE")
-                    {
-                        request.KeepAlive = false;
-                    }
-                    else if (iKey.ToUpper() == "DATE")
-                    {
-                        request.Date = DateTime.Parse(iValue);
-                    }
-                    else if (iKey.ToUpper() == "IF-MODIFIED-SINCE")
-                    {
-                        request.IfModifiedSince = DateTime.Parse(iValue);
-                    }
-                    else if (iKey.ToUpper() == "EXPECT")
-                    {
-                        request.Expect = iValue;
-                    }
-                    else if (iKey.ToUpper() == "HOST")
-                    {
-                        request.Host = iValue;
-                    }
-                    else if (iKey.ToUpper() == "REFERER")
-                    {
-                        request.Referer = iValue;
-                    }
-                    else if (String.Equals(iKey, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
-                    {
-                        request.TransferEncoding = iValue;
-                    }
-                    else if (iKey.ToUpper() == "USER-AGENT")
-                    {
-                        request.UserAgent = iValue;
-                    }
-                    else if (iKey.ToUpper() == "RANGE")
-                    {
-                        request.AddRange(int.Parse(iValue.Substring(0, iValue.IndexOf("-") + 1)), int.Parse(iValue.Substring(iValue.IndexOf("-") + 1)));
-                    }
-                    else if (iKey.ToUpper() == "CONTENT-TYPE")
-                    {
-                        request.ContentType = iValue;
-                        isContentTypeDefined = true;
-                    }
-                    else if (iKey.ToUpper() == "CONTENT-LENGTH" && long.TryParse(iValue, out temp))
-                    {
-                        request.ContentLength = long.Parse(iValue);
-                        isContentLengthDefined = true;
-                    }
-                    else if (iKey.ToUpper() == "TIMEOUT" && long.TryParse(iValue, out temp)) // timeout handle as header
-                    {
-                        if (int.Parse(iValue) == -1 || int.Parse(iValue) > 0)
-                        {
-                            request.Timeout = int.Parse(iValue);
-                        }
-                    }
-                    else if (iKey.ToUpper() == "VERIFY" && iValue.ToUpper() == "FALSE")
-                    {
-                        request.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
-                    }
-                    else if (iKey.Length > 2)
-                    {
-                        request.Headers.Add(iKey, iValue);
+                        case "ACCEPT":
+                            request.Accept = kvp.Value;
+                            break;
+                        case "CONNECTION":
+                            if (kvp.Value.ToUpper() == "CLOSE")
+                            {
+                                request.KeepAlive = false;
+                            }
+                            break;
+                        case "DATE":
+                            request.Date = DateTime.Parse(kvp.Value);
+                            break;
+                        case "IF-MODIFIED-SINCE":
+                            request.IfModifiedSince = DateTime.Parse(kvp.Value);
+                            break;
+                        case "EXPECT":
+                            request.Expect = kvp.Value;
+                            break;
+                        case "HOST":
+                            request.Host = kvp.Value;
+                            break;
+                        case "REFERER":
+                            request.Referer = kvp.Value;
+                            break;
+                        case "TRANSFER-ENCODING":
+                            request.TransferEncoding = kvp.Value;
+                            break;
+                        case "USER-AGENT":
+                            request.UserAgent = kvp.Value;
+                            break;
+                        case "RANGE":
+                            string[] rangeParts = kvp.Value.Split('-');
+                            if (rangeParts.Length == 2)
+                            {
+                                request.AddRange(int.Parse(rangeParts[0]), int.Parse(rangeParts[1]));
+                            }
+                            break;
+                        case "CONTENT-TYPE":
+                            request.ContentType = kvp.Value;
+                            break;
+                        case "CONTENT-LENGTH":
+                            if (long.TryParse(kvp.Value, out long contentLength))
+                            {
+                                request.ContentLength = contentLength;
+                            }
+                            break;
+                        case "TIMEOUT":
+                            if (int.TryParse(kvp.Value, out int timeout))
+                            {
+                                request.Timeout = timeout > 0 ? timeout : -1;
+                            }
+                            break;
+                        case "VERIFY":
+                            if (kvp.Value.ToUpper() == "FALSE")
+                            {
+                                request.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
+                            }
+                            break;
+                        default:
+                            if (kvp.Key.Length > 2)
+                            {
+                                request.Headers.Add(kvp.Key, kvp.Value);
+                            }
+                            break;
                     }
                 }
 
@@ -237,5 +223,48 @@ public partial class UserDefinedFunctions
         StatusCode = rObject.rStatusCode;
         Response = rObject.rBody;
         Headers = rObject.rHeaders;
+    }
+
+    static Dictionary<string, string> ParseHeaders(string iHeaders)
+    {
+        // Dictionary to store the parsed headers as <string, string>
+        var headersDict = new Dictionary<string, string>();
+
+        // Trim leading/trailing spaces or curly braces
+        iHeaders = iHeaders.Trim();
+
+        // Ensure the string starts with '{' and ends with '}'
+        if (iHeaders.StartsWith("{"))
+            iHeaders = iHeaders.Substring(1);
+        if (iHeaders.EndsWith("}"))
+            iHeaders = iHeaders.Substring(0, iHeaders.Length - 1);
+
+        // Updated regex pattern to allow for optional spaces around the colon
+        string pattern = "\"([^\"]+)\"\\s*:\\s*(\"[^\"]*\"|[0-9]+)";
+        Regex regex = new Regex(pattern);
+
+        // Find matches using the regex pattern
+        MatchCollection matches = regex.Matches(iHeaders);
+
+        foreach (Match match in matches)
+        {
+            // Extract the key
+            string iKey = match.Groups[1].Value;
+
+            // Extract the value (which can be a string or a number)
+            string iValue = match.Groups[2].Value;
+
+            // Convert both strings and numbers to string format
+            if (iValue.StartsWith("\"") && iValue.EndsWith("\""))
+            {
+                // If it's a string, remove the surrounding quotes
+                iValue = iValue.Trim('"');
+            }
+
+            // Add both string and numeric values as strings in the dictionary
+            headersDict[iKey] = iValue;
+        }
+
+        return headersDict;
     }
 }
