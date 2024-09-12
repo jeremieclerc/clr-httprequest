@@ -34,7 +34,6 @@ public partial class UserDefinedFunctions
         string iBody = body.ToString();
         bool isContentTypeDefined = false;
         bool isContentLengthDefined = false;
-        long temp;
 
         int rCode = 0;
         string rBody = "";
@@ -42,14 +41,15 @@ public partial class UserDefinedFunctions
 
         WebHeaderCollection rDictHeaders = new WebHeaderCollection();
         ArrayList responseCollection = new ArrayList();
-        string[] items = new string[0];
 
         try
-        {
+        {   
+            // HTTP method validation
             if (iMethod != "GET" && iMethod != "POST" && iMethod != "PUT" && iMethod != "HEAD" && iMethod != "DELETE" && iMethod != "TRACE" && iMethod != "OPTIONS")
             {
                 rBody = "Method not supported. Methods used : " + iMethod + ". List of supported methods : GET, POST, PUT, HEAD, DELETE, TRACE, OPTIONS.";
             }
+            // URL validation
             else if (iUrl == "Null")
             {
                 rBody = "Please specify an URL to request";
@@ -60,17 +60,19 @@ public partial class UserDefinedFunctions
             }
             else
             {
+                // SSL/TLS configuration
                 ServicePointManager.SecurityProtocol = (SecurityProtocolType)192 | (SecurityProtocolType)768 | (SecurityProtocolType)3072;
+
+                // Initialiaze HTTP request
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(iUrl);
                 request.Method = iMethod;
 
                 // Parse the headers
                 var headersDict = ParseHeaders(iHeaders);
 
+                // Apply headers
                 foreach (var kvp in headersDict)
                 {
-                    Debug.WriteLine(kvp.Key + " - " + kvp.Value);
-                    // Handle each header based on its key
                     switch (kvp.Key.ToUpper())
                     {
                         case "ACCEPT":
@@ -140,10 +142,11 @@ public partial class UserDefinedFunctions
                     }
                 }
 
-
-                if (iMethod != "GET" && iBody.Length > 0 && iBody != "Null") // POST, PUT etc
+                // Handle non-GET requests (POST, PUT, etc.) and write the body
+                if (iMethod != "GET" && iBody.Length > 0 && iBody != "Null")
                 {
                     byte[] byteArray = Encoding.UTF8.GetBytes(iBody);
+                    // Set default Content-Type and Content-Length if not already defined
                     if (isContentTypeDefined == false)
                     {
                         request.ContentType = "application/x-www-form-urlencoded";
@@ -157,6 +160,7 @@ public partial class UserDefinedFunctions
                     reqStream.Close();
                 }
 
+                // Make the HTTP call
                 HttpWebResponse webResponse = (HttpWebResponse)request.GetResponse();
                 StreamReader reader = new StreamReader(webResponse.GetResponseStream());
                 rBody = reader.ReadToEnd();
@@ -166,6 +170,7 @@ public partial class UserDefinedFunctions
                 reader.Close();
             }
         }
+        // Handle WebExceptions (timeout, SSL errors, ...)
         catch (WebException ex)
         {
             if (ex.Response != null)
@@ -183,7 +188,7 @@ public partial class UserDefinedFunctions
             }
         }
 
-
+        // Format headers into JSON string
         if (rDictHeaders.Count > 0)
         {
             rHeaders = "{";
@@ -197,6 +202,7 @@ public partial class UserDefinedFunctions
         {
             rBody = null;
         }
+        // Handle specific error cases like SSL or timeout hints
         if (rCode == -2146233079 && rBody != null)
         {
             if (rBody.Contains("SSL"))
@@ -227,41 +233,39 @@ public partial class UserDefinedFunctions
 
     static Dictionary<string, string> ParseHeaders(string iHeaders)
     {
-        // Dictionary to store the parsed headers as <string, string>
+        // Initialize the dictionnary
         var headersDict = new Dictionary<string, string>();
 
-        // Trim leading/trailing spaces or curly braces
+        // Trim leading/trailing spaces
         iHeaders = iHeaders.Trim();
 
-        // Ensure the string starts with '{' and ends with '}'
+        // Remove the curly braces
         if (iHeaders.StartsWith("{"))
             iHeaders = iHeaders.Substring(1);
         if (iHeaders.EndsWith("}"))
             iHeaders = iHeaders.Substring(0, iHeaders.Length - 1);
 
-        // Updated regex pattern to allow for optional spaces around the colon
-        string pattern = "\"([^\"]+)\"\\s*:\\s*(\"[^\"]*\"|[0-9]+)";
-        Regex regex = new Regex(pattern);
+        // regex pattern to parse the JSON key/values 
+        Regex regex = new Regex("\"([^\"]+)\"\\s*:\\s*(\"[^\"]*\"|[0-9]+)");
 
         // Find matches using the regex pattern
         MatchCollection matches = regex.Matches(iHeaders);
 
         foreach (Match match in matches)
         {
-            // Extract the key
+            // Key extraction
             string iKey = match.Groups[1].Value;
 
-            // Extract the value (which can be a string or a number)
+            // Value extraction (can be a string or a number)
             string iValue = match.Groups[2].Value;
 
-            // Convert both strings and numbers to string format
             if (iValue.StartsWith("\"") && iValue.EndsWith("\""))
             {
                 // If it's a string, remove the surrounding quotes
                 iValue = iValue.Trim('"');
             }
 
-            // Add both string and numeric values as strings in the dictionary
+            // Store inside the dictionnary
             headersDict[iKey] = iValue;
         }
 
