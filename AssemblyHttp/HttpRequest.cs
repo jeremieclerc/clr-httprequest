@@ -6,9 +6,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.ComponentModel.Design;
 using System.Collections.Generic;
-using System.Diagnostics;
 
 public partial class UserDefinedFunctions
 {
@@ -43,7 +41,7 @@ public partial class UserDefinedFunctions
         ArrayList responseCollection = new ArrayList();
 
         try
-        {   
+        {
             // HTTP method validation
             if (iMethod != "GET" && iMethod != "POST" && iMethod != "PUT" && iMethod != "HEAD" && iMethod != "DELETE" && iMethod != "TRACE" && iMethod != "OPTIONS")
             {
@@ -68,106 +66,117 @@ public partial class UserDefinedFunctions
                 request.Method = iMethod;
 
                 // Parse the headers
-                var headersDict = ParseHeaders(iHeaders);
-
-                // Apply headers
-                foreach (var kvp in headersDict)
+                try
                 {
-                    switch (kvp.Key.ToUpper())
+                    if (iHeaders != "Null" && iHeaders.Length > 0)
                     {
-                        case "ACCEPT":
-                            request.Accept = kvp.Value;
-                            break;
-                        case "CONNECTION":
-                            if (kvp.Value.ToUpper() == "CLOSE")
-                            {
-                                request.KeepAlive = false;
-                            }
-                            break;
-                        case "DATE":
-                            request.Date = DateTime.Parse(kvp.Value);
-                            break;
-                        case "IF-MODIFIED-SINCE":
-                            request.IfModifiedSince = DateTime.Parse(kvp.Value);
-                            break;
-                        case "EXPECT":
-                            request.Expect = kvp.Value;
-                            break;
-                        case "HOST":
-                            request.Host = kvp.Value;
-                            break;
-                        case "REFERER":
-                            request.Referer = kvp.Value;
-                            break;
-                        case "TRANSFER-ENCODING":
-                            request.TransferEncoding = kvp.Value;
-                            break;
-                        case "USER-AGENT":
-                            request.UserAgent = kvp.Value;
-                            break;
-                        case "RANGE":
-                            string[] rangeParts = kvp.Value.Split('-');
-                            if (rangeParts.Length == 2)
-                            {
-                                request.AddRange(int.Parse(rangeParts[0]), int.Parse(rangeParts[1]));
-                            }
-                            break;
-                        case "CONTENT-TYPE":
-                            request.ContentType = kvp.Value;
-                            break;
-                        case "CONTENT-LENGTH":
-                            if (long.TryParse(kvp.Value, out long contentLength))
-                            {
-                                request.ContentLength = contentLength;
-                            }
-                            break;
-                        case "TIMEOUT":
-                            if (int.TryParse(kvp.Value, out int timeout))
-                            {
-                                request.Timeout = timeout > 0 ? timeout : -1;
-                            }
-                            break;
-                        case "VERIFY":
-                            if (kvp.Value.ToUpper() == "FALSE")
-                            {
-                                request.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
-                            }
-                            break;
-                        default:
-                            if (kvp.Key.Length > 2)
-                            {
-                                request.Headers.Add(kvp.Key, kvp.Value);
-                            }
-                            break;
-                    }
-                }
+                        var headersDict = ParseJson(iHeaders);
 
-                // Handle non-GET requests (POST, PUT, etc.) and write the body
-                if (iMethod != "GET" && iBody.Length > 0 && iBody != "Null")
+                        // Apply headers
+                        foreach (var header in headersDict)
+                        {
+                            switch (header.Key.ToUpper())
+                            {
+                                case "ACCEPT":
+                                    request.Accept = header.Value;
+                                    break;
+                                case "CONNECTION":
+                                    if (header.Value.ToUpper() == "CLOSE")
+                                    {
+                                        request.KeepAlive = false;
+                                    }
+                                    break;
+                                case "DATE":
+                                    request.Date = DateTime.Parse(header.Value);
+                                    break;
+                                case "IF-MODIFIED-SINCE":
+                                    request.IfModifiedSince = DateTime.Parse(header.Value);
+                                    break;
+                                case "EXPECT":
+                                    request.Expect = header.Value;
+                                    break;
+                                case "HOST":
+                                    request.Host = header.Value;
+                                    break;
+                                case "REFERER":
+                                    request.Referer = header.Value;
+                                    break;
+                                case "TRANSFER-ENCODING":
+                                    request.TransferEncoding = header.Value;
+                                    break;
+                                case "USER-AGENT":
+                                    request.UserAgent = header.Value;
+                                    break;
+                                case "RANGE":
+                                    string[] rangeParts = header.Value.Split('-');
+                                    if (rangeParts.Length == 2)
+                                    {
+                                        request.AddRange(int.Parse(rangeParts[0]), int.Parse(rangeParts[1]));
+                                    }
+                                    break;
+                                case "CONTENT-TYPE":
+                                    request.ContentType = header.Value;
+                                    break;
+                                case "CONTENT-LENGTH":
+                                    if (long.TryParse(header.Value, out long contentLength))
+                                    {
+                                        request.ContentLength = contentLength;
+                                    }
+                                    break;
+                                case "TIMEOUT":
+                                    if (int.TryParse(header.Value, out int timeout))
+                                    {
+                                        request.Timeout = timeout > 0 ? timeout : -1;
+                                    }
+                                    break;
+                                case "VERIFY":
+                                    if (header.Value.ToUpper() == "FALSE")
+                                    {
+                                        request.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
+                                    }
+                                    break;
+                                default:
+                                    if (header.Key.Length > 2)
+                                    {
+                                        request.Headers.Add(header.Key, header.Value);
+                                    }
+                                    break;
+                            }
+                        }
+                    }
+
+                    // Handle non-GET requests (POST, PUT, etc.) and write the body
+                    if (iMethod != "GET" && iBody.Length > 0 && iBody != "Null")
+                    {
+                        byte[] byteArray = Encoding.UTF8.GetBytes(iBody);
+                        // Set default Content-Type and Content-Length if not already defined
+                        if (isContentTypeDefined == false)
+                        {
+                            request.ContentType = "application/x-www-form-urlencoded";
+                        }
+                        if (isContentLengthDefined == false)
+                        {
+                            request.ContentLength = byteArray.Length;
+                        }
+                        var reqStream = request.GetRequestStream();
+                        reqStream.Write(byteArray, 0, byteArray.Length);
+                        reqStream.Close();
+                    }
+
+                    // Make the HTTP call
+                    HttpWebResponse webResponse = (HttpWebResponse)request.GetResponse();
+                    StreamReader reader = new StreamReader(webResponse.GetResponseStream());
+                    rBody = reader.ReadToEnd();
+                    rCode = (int)webResponse.StatusCode;
+                    rDictHeaders = webResponse.Headers;
+                    webResponse.Close();
+                    reader.Close();
+                }
+                // Handle malformed json header
+                catch (FormatException ex)
                 {
-                    byte[] byteArray = Encoding.UTF8.GetBytes(iBody);
-                    // Set default Content-Type and Content-Length if not already defined
-                    if (isContentTypeDefined == false)
-                    {
-                        request.ContentType = "application/x-www-form-urlencoded";
-                    }
-                    if (isContentLengthDefined == false)
-                    {
-                        request.ContentLength = byteArray.Length;
-                    }
-                    var reqStream = request.GetRequestStream();
-                    reqStream.Write(byteArray, 0, byteArray.Length);
-                    reqStream.Close();
+                    rBody = "Malformed JSON header: " + ex.Message;
                 }
-
-                // Make the HTTP call
-                HttpWebResponse webResponse = (HttpWebResponse)request.GetResponse();
-                StreamReader reader = new StreamReader(webResponse.GetResponseStream());
-                rBody = reader.ReadToEnd();
-                rCode = (int)webResponse.StatusCode;
-                rDictHeaders = webResponse.Headers;
-                webResponse.Close();
-                reader.Close();
             }
         }
         // Handle WebExceptions (timeout, SSL errors, ...)
@@ -231,25 +240,30 @@ public partial class UserDefinedFunctions
         Headers = rObject.rHeaders;
     }
 
-    static Dictionary<string, string> ParseHeaders(string iHeaders)
+    static Dictionary<string, string> ParseJson(string json)
     {
         // Initialize the dictionnary
         var headersDict = new Dictionary<string, string>();
 
         // Trim leading/trailing spaces
-        iHeaders = iHeaders.Trim();
+        json = json.Trim();
 
         // Remove the curly braces
-        if (iHeaders.StartsWith("{"))
-            iHeaders = iHeaders.Substring(1);
-        if (iHeaders.EndsWith("}"))
-            iHeaders = iHeaders.Substring(0, iHeaders.Length - 1);
+        if (json.StartsWith("{") && json.EndsWith("}"))
+        {
+            json = json.Substring(1);
+            json = json.Substring(0, json.Length - 1);
+        }
+        else
+        {
+            throw new FormatException("JSON should start with '{' and end with '}'.");
+        }
 
         // regex pattern to parse the JSON key/values 
         Regex regex = new Regex("\"([^\"]+)\"\\s*:\\s*(\"[^\"]*\"|[0-9]+)");
 
         // Find matches using the regex pattern
-        MatchCollection matches = regex.Matches(iHeaders);
+        MatchCollection matches = regex.Matches(json);
 
         foreach (Match match in matches)
         {
