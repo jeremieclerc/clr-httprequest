@@ -172,10 +172,10 @@ public partial class UserDefinedFunctions
                     webResponse.Close();
                     reader.Close();
                 }
-                // Handle malformed json header
-                catch (FormatException ex)
+                // Handle invalid json header
+                catch (FormatException)
                 {
-                    rBody = "Malformed JSON header: " + ex.Message;
+                    rBody = "JSON text is not properly formatted. (@headers)";
                 }
             }
         }
@@ -243,7 +243,7 @@ public partial class UserDefinedFunctions
     static Dictionary<string, string> ParseJson(string json)
     {
         // Initialize the dictionnary
-        var headersDict = new Dictionary<string, string>();
+        var jsonDict = new Dictionary<string, string>();
 
         // Trim leading/trailing spaces
         json = json.Trim();
@@ -280,9 +280,9 @@ public partial class UserDefinedFunctions
             }
 
             // Store inside the dictionnary
-            headersDict[iKey] = iValue;
+            jsonDict[iKey] = iValue;
         }
 
-        return headersDict;
+        return jsonDict;
     }
 }
