@@ -242,47 +242,143 @@ public partial class UserDefinedFunctions
 
     static Dictionary<string, string> ParseJson(string json)
     {
-        // Initialize the dictionnary
         var jsonDict = new Dictionary<string, string>();
-
-        // Trim leading/trailing spaces
         json = json.Trim();
 
         // Remove the curly braces
         if (json.StartsWith("{") && json.EndsWith("}"))
         {
-            json = json.Substring(1);
-            json = json.Substring(0, json.Length - 1);
+            json = json.Substring(1, json.Length - 2);
         }
         else
         {
             throw new FormatException("JSON should start with '{' and end with '}'.");
         }
 
-        // regex pattern to parse the JSON key/values 
-        Regex regex = new Regex("\"([^\"]+)\"\\s*:\\s*(\"[^\"]*\"|[0-9]+)");
+        int position = 0;
+        int length = json.Length;
 
-        // Find matches using the regex pattern
-        MatchCollection matches = regex.Matches(json);
-
-        foreach (Match match in matches)
+        while (position < length)
         {
-            // Key extraction
-            string iKey = match.Groups[1].Value;
+            SkipWhitespace(json, ref position);
 
-            // Value extraction (can be a string or a number)
-            string iValue = match.Groups[2].Value;
+            // Read key
+            string key = ParseString(json, ref position);
 
-            if (iValue.StartsWith("\"") && iValue.EndsWith("\""))
+            SkipWhitespace(json, ref position);
+
+            // Expect colon
+            if (position >= length || json[position] != ':')
+                throw new FormatException("Expected ':' after key at position " + position);
+            position++;
+
+            SkipWhitespace(json, ref position);
+
+            // Read value
+            string value;
+            if (position < length && json[position] == '"')
             {
-                // If it's a string, remove the surrounding quotes
-                iValue = iValue.Trim('"');
+                value = ParseString(json, ref position);
+            }
+            else
+            {
+                // Parse number
+                int start = position;
+                while (position < length && char.IsDigit(json[position]))
+                {
+                    position++;
+                }
+                value = json.Substring(start, position - start);
             }
 
-            // Store inside the dictionnary
-            jsonDict[iKey] = iValue;
+            // Add to dictionary
+            jsonDict[key] = value;
+
+            SkipWhitespace(json, ref position);
+
+            // If there's a comma, skip it
+            if (position < length && json[position] == ',')
+            {
+                position++;
+                continue;
+            }
+            else if (position < length)
+            {
+                throw new FormatException("Expected ',' or end of string at position " + position);
+            }
         }
 
         return jsonDict;
+    }
+
+    static void SkipWhitespace(string s, ref int pos)
+    {
+        while (pos < s.Length && char.IsWhiteSpace(s[pos]))
+            pos++;
+    }
+
+    static string ParseString(string s, ref int position)
+    {
+        if (position >= s.Length || s[position] != '"')
+            throw new FormatException("Expected '\"' at position " + position);
+
+        position++; // Skip opening quote
+        var sb = new StringBuilder();
+        while (position < s.Length)
+        {
+            char c = s[position];
+            if (c == '\\')
+            {
+                position++;
+                if (position >= s.Length)
+                    throw new FormatException("Unexpected end after escape character at position " + position);
+                char escapedChar = s[position];
+                switch (escapedChar)
+                {
+                    case '"':
+                    case '\\':
+                    case '/':
+                        sb.Append(escapedChar);
+                        break;
+                    case 'b':
+                        sb.Append('\b');
+                        break;
+                    case 'f':
+                        sb.Append('\f');
+                        break;
+                    case 'n':
+                        sb.Append('\n');
+                        break;
+                    case 'r':
+                        sb.Append('\r');
+                        break;
+                    case 't':
+                        sb.Append('\t');
+                        break;
+                    case 'u':
+                        // Unicode escape sequence
+                        if (position + 4 >= s.Length)
+                            throw new FormatException("Incomplete unicode escape sequence at position " + position);
+                        string hex = s.Substring(position + 1, 4);
+                        sb.Append((char)Convert.ToInt32(hex, 16));
+                        position += 4;
+                        break;
+                    default:
+                        throw new FormatException("Invalid escape character at position " + position);
+                }
+            }
+            else if (c == '"')
+            {
+                position++; // Skip closing quote
+                return sb.ToString();
+            }
+            else
+            {
+                sb.Append(c);
+            }
+            position++;
+        }
+
+        throw new FormatException("Unexpected end of string while parsing string starting at position " + position);
     }
 }
