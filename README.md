@@ -61,4 +61,4 @@ WITH (
 # Credit
 - Jérémie Clerc
 - Oscar Burdin
-- Arthur Menyiel
+- Arthur Meyniel
