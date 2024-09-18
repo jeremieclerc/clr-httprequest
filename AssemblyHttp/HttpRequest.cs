@@ -116,11 +116,13 @@ public partial class UserDefinedFunctions
                                     break;
                                 case "CONTENT-TYPE":
                                     request.ContentType = header.Value;
+                                    isContentTypeDefined = true;
                                     break;
                                 case "CONTENT-LENGTH":
                                     if (long.TryParse(header.Value, out long contentLength))
                                     {
                                         request.ContentLength = contentLength;
+                                        isContentLengthDefined = true;
                                     }
                                     break;
                                 case "TIMEOUT":
