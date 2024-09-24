@@ -5,7 +5,6 @@ using Microsoft.SqlServer.Server;
 using System.IO;
 using System.Net;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Collections.Generic;
 
 public partial class UserDefinedFunctions
