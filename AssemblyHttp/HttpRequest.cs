@@ -162,6 +162,12 @@ public partial class UserDefinedFunctions
                         var reqStream = request.GetRequestStream();
                         reqStream.Write(byteArray, 0, byteArray.Length);
                         reqStream.Close();
+                    } else if (iMethod != "GET")
+                    {
+                        if (!isContentLengthDefined)
+                            request.ContentLength = 0;
+                        if (!isContentTypeDefined)
+                            request.ContentType = "application/x-www-form-urlencoded";
                     }
 
                     // Make the HTTP call
